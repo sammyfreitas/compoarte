@@ -12,7 +12,8 @@ const loadMore = qs("#load-more");
 const filterState = {
   series: "todas",
   type: "todas",
-  period: "todas"
+  period: "todas",
+  sort: "recentes"
 };
 let currentWorks = [];
 let visibleCount = 24;
@@ -112,9 +113,10 @@ function workCard(work) {
         </span>
       </span>
       <span class="work-info">
-        <span class="work-label">${work.label} · ${work.year}</span>
         <strong>${work.title}</strong>
-        <span>${work.series}</span>
+        <span class="work-details">${work.technique} · ${work.year}</span>
+        <span class="work-price">${work.price === "Sob consulta" ? "Consultar valor" : work.price}</span>
+        <span class="work-interest">Ver obra e consultar</span>
       </span>
     </button>
   `;
@@ -141,7 +143,12 @@ function renderWorks() {
     const matchesType = filterState.type === "todas" || work.category === filterState.type;
     const matchesPeriod = filterState.period === "todas" || periodFor(work) === filterState.period;
     return matchesSeries && matchesType && matchesPeriod;
-  }).sort((a, b) => workPriority(b) - workPriority(a) || sortYear(b) - sortYear(a));
+  });
+  currentWorks.sort((a, b) => {
+    if (filterState.sort === "antigas") return sortYear(a) - sortYear(b);
+    if (filterState.sort === "az") return a.title.localeCompare(b.title, "pt-BR");
+    return workPriority(b) - workPriority(a) || sortYear(b) - sortYear(a);
+  });
   visibleCount = 24;
   renderVisibleWorks();
 }
@@ -225,6 +232,7 @@ function setupFilters() {
   const seriesSelect = qs("#series-filter");
   const typeSelect = qs("#type-filter");
   const periodSelect = qs("#period-filter");
+  const sortSelect = qs("#sort-filter");
   const clearButton = qs("#clear-filters");
 
   fillSelect(seriesSelect, uniqueSorted(artWorks.map((work) => work.series)).map((series) => ({ value: series, label: series })));
@@ -233,7 +241,8 @@ function setupFilters() {
   [
     [seriesSelect, "series"],
     [typeSelect, "type"],
-    [periodSelect, "period"]
+    [periodSelect, "period"],
+    [sortSelect, "sort"]
   ].forEach(([select, key]) => {
     select.addEventListener("change", () => {
       filterState[key] = select.value;
@@ -245,9 +254,11 @@ function setupFilters() {
     filterState.series = "todas";
     filterState.type = "todas";
     filterState.period = "todas";
+    filterState.sort = "recentes";
     seriesSelect.value = "todas";
     typeSelect.value = "todas";
     periodSelect.value = "todas";
+    sortSelect.value = "recentes";
     renderWorks();
   });
 }
@@ -292,12 +303,19 @@ function setupHeader() {
 
 function setupTheme() {
   const toggle = qs(".theme-toggle");
-  const saved = localStorage.getItem("contemporarte-theme") || "light";
-  document.body.dataset.theme = saved;
+  const saved = localStorage.getItem("contemporarte-theme");
+  const setTheme = (theme) => {
+    const nextTheme = theme === "dark" ? "dark" : "light";
+    document.body.dataset.theme = nextTheme;
+    toggle.textContent = nextTheme === "dark" ? "Tema claro" : "Tema escuro";
+    toggle.setAttribute("aria-pressed", String(nextTheme === "dark"));
+    localStorage.setItem("contemporarte-theme", nextTheme);
+  };
+
+  setTheme(saved || "light");
   toggle.addEventListener("click", () => {
     const next = document.body.dataset.theme === "dark" ? "light" : "dark";
-    document.body.dataset.theme = next;
-    localStorage.setItem("contemporarte-theme", next);
+    setTheme(next);
   });
 }
 
